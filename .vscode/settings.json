@@ -1,0 +1,5 @@
+{
+    "dotnetCoreExplorer.searchpatterns": [
+        "**/bin/**/*.{dll,exe}"
+    ]
+}
