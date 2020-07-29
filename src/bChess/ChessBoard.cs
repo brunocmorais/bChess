@@ -37,6 +37,7 @@ namespace bChess
         public byte To { get; private set; }
         public CaptureInfo CaptureInfo { get; private set; }
         public ulong Hash { get; set; }
+        public string Move => $"{GetMove(From)}{GetMove(To)}";
 
         public ChessBoard()
         {
@@ -274,6 +275,13 @@ namespace bChess
         public void DefineNextTurn(Color color)
         {
             NextTurn = color;
+        }
+
+        private string GetMove(byte position)
+        {
+            char first = (char)(97 + ((position & 0xF)));
+		    char second = (char)(49 + ((position & 0xF0) >> 4));
+            return $"{first}{second}";
         }
     }
 }

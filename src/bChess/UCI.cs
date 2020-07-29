@@ -1,32 +1,27 @@
 using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
 
 namespace bChess
 {
     public static class UCI
     {
         private static ChessBoard board = new ChessBoard();
+        private static CancellationTokenSource tokenSource = new CancellationTokenSource();
+        private static System.Timers.Timer infoTimer = new System.Timers.Timer(1000);
         private static int Level = 3;
 
         public static void Init()
         {
+            InitInfoTimer();
             ReadCommands();
         }
 
         private static void InitBoard()
         {
             board = new ChessBoard();
-        }
-
-        private static string GetMove(byte from, byte to)
-        {
-            return $"{GetMove(from)}{GetMove(to)}";
-        }
-
-        private static string GetMove(byte position)
-        {
-            char first = (char)(97 + ((position & 0xF)));
-		    char second = (char)(49 + ((position & 0xF0) >> 4));
-            return $"{first}{second}";
         }
 
         private static byte[] GetPositions(string move)
@@ -61,9 +56,15 @@ namespace bChess
                     case "go": Go(); break;
                     case "setoption": SetOption(command); break;
                     case "quit": exit = true; break;
+                    case "stop": Stop(); break;
                     default: break;
                 }
             }
+        }
+
+        private static void Stop()
+        {
+            tokenSource.Cancel();
         }
 
         private static void SetOption(string command)
@@ -80,8 +81,37 @@ namespace bChess
 
         private static void Go()
         {
-            board = Search.SelectMove(board, Level);
-            WriteResponse($"bestmove {GetMove(board.From, board.To)}");
+            infoTimer.Start();
+            
+            Task.Run(() =>
+            {
+                try
+                {
+                    board = Search.Start(board, Level, tokenSource.Token);
+                    WriteResponse($"bestmove {board.Move}");
+                }
+                catch (Exception ex)
+                {
+                    if (ex is AggregateException || ex is OperationCanceledException)  // comando stop enviado para a engine
+                    {
+                        board = Search.GetSearchInfo().BestMoves.First();
+                        WriteResponse($"bestmove {board.Move}");
+                    }
+                    else
+                        throw;
+                }
+                finally
+                {
+                    infoTimer.Stop();
+                    tokenSource = new CancellationTokenSource();
+                }
+            }, tokenSource.Token);
+        }
+
+        private static void InitInfoTimer()
+        {
+            infoTimer.Elapsed += OnSendInfo;
+            infoTimer.AutoReset = true;
         }
 
         private static void ReadPosition(string command)
@@ -131,6 +161,17 @@ namespace bChess
         private static void WriteResponse(string message)
         {
             Console.WriteLine(message);
+        }
+
+        private static void OnSendInfo(object source, ElapsedEventArgs e)
+        {
+            var info = Search.GetSearchInfo();
+            var bestMove = info.BestMoves.FirstOrDefault();
+            
+            if (bestMove == null)
+                return;
+
+            WriteResponse($"info depth {Level} score cp {info.Score} nodes {info.VisitedNodes} nps {info.NPS} tbhits {info.TableHits} pv {bestMove.Move}");
         }
     }
 }
