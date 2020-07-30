@@ -1,12 +1,14 @@
+using System;
+
 namespace bChess
 {
     public static class TranspositionTable
     {
-        private static TranspositionTableInfo[] Array = new TranspositionTableInfo[0x100000];
+        private static TranspositionTableInfo[] Table = new TranspositionTableInfo[0x100000];
 
         public static TranspositionTableInfo Find(ChessBoard board)
         {
-            TranspositionTableInfo hashInformation = Array[board.Hash % (ulong) Array.Length];
+            TranspositionTableInfo hashInformation = Table[board.Hash % (ulong) Table.Length];
 
             if (board.NextTurn != hashInformation.Color)
                 hashInformation.Value = -hashInformation.Value;
@@ -16,7 +18,12 @@ namespace bChess
 
         public static void Add(ChessBoard board, int depth, int value, Transposition type)
         {
-            Array[board.Hash % (ulong) Array.Length] = new TranspositionTableInfo(board.Hash, depth, value, board.NextTurn, type);
+            Table[board.Hash % (ulong) Table.Length] = new TranspositionTableInfo(board.Hash, depth, value, board.NextTurn, type);
+        }
+
+        public static void Clear()
+        {
+            Array.Clear(Table, 0, Table.Length);
         }
     }
 }

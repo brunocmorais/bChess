@@ -76,6 +76,9 @@ namespace bChess
                 case "Level":
                     Level = int.Parse(parameters[4]);
                     break;
+                case "ClearHashTable":
+                    TranspositionTable.Clear();
+                    break;
             }
         }
 
@@ -154,8 +157,14 @@ namespace bChess
             WriteResponse("uci");
             WriteResponse("id name bChess v2.0");
             WriteResponse("id author Bruno Costa de Morais");
+            SendOptions();
+            WriteResponse("uciok");
+        }
+
+        private static void SendOptions()
+        {
             WriteResponse("option name Level type spin default 3 min 1 max 5");
-            WriteResponse("uciok"); 
+            WriteResponse("option name ClearHashTable type button");
         }
 
         private static void WriteResponse(string message)

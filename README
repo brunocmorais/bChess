@@ -16,15 +16,12 @@ TODO:
 - captura en passant
 - validação completa de roque (o rei não pode andar por casas atacadas durante o roque)
 - validação efetiva de movimentos, evitando jogadas inválidas
-- aumentar dinamicamente árvore de busca, forçar mates e evitar afogamento em finais
-- controle de movimentos, para evitar ou beneficiar-se de repetições
+- aumentar dinamicamente profundidade de busca, forçar mates e evitar afogamento em finais
+- controle de movimentos, para evitar ou beneficiar-se de repetições/xeque perpétuo
 - promoção com escolha de outras peças, atualmente o peão torna-se uma dama automaticamente
 - garantir validade do perft, para que a geração de movimentos não tenha bugs
 - iterative deepening e controle de tempo
-- feedbacks da engine antes de obter o melhor movimento, mostrar variação principal, nós percorridos, table hits, etc.
 - adicionar suporte ao ponder e permitir a engine a continuar a procurar movimentos no turno do oponente
-- suporte a buscas com multi-threading, aproveitando mais de um núcleo de processamento e ganhando performance
-- suporte a stop search
 - entender como funciona a limitação por rating e aplicar isso à engine
 - melhoras na avaliação de posições, entender formas mais performáticas, considerar estrutura de peões, disponibilidade de roque, segurança do rei, par de bispos, mobilidade, etc.
 

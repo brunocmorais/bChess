@@ -21,7 +21,9 @@ namespace bChess
             
             searchInfo.BestMoves.Add(moves.First());
 
-            if (moves.Count >= 2)
+            // entender porque 4k3/8/5R2/8/8/2R5/8/4K1b1 b - - 1 1 traz movimentos estranhos
+
+            if (moves.Count >= 2) // efetua busca com duas threads para ganhar velocidade
             {
                 var intervals = new[] { 0, moves.Count / 2, moves.Count };
                 var tasks = new Task[2];
@@ -33,8 +35,6 @@ namespace bChess
             }
             else
                 ProcessInnerTree(moves, depth);
-
-            // VERIFICAR PORQUE NÃO ESTÁ MAIS VOLTANDO O BESTMOVE APÓS O STOP
 
             return searchInfo.BestMoves[new Random().Next(0, searchInfo.BestMoves.Count)];
         }
