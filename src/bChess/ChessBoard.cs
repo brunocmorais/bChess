@@ -55,6 +55,8 @@ namespace bChess
             BlackKing    = new Bitboard(Constants.BlackKingStartPosition  , Piece.King  , Color.Black);
             CastlingInfo = new CastlingInfo();
             CaptureInfo  = new CaptureInfo();
+            From         = 0xFF;
+            To           = 0xFF;
             NextTurn     = Color.White;
             Hash         = ZobristHash.ComputeHash(this);
         }
@@ -76,6 +78,8 @@ namespace bChess
             CastlingInfo = new CastlingInfo(chessBoard.CastlingInfo);
             CaptureInfo  = new CaptureInfo(chessBoard.CaptureInfo);
             NextTurn     = chessBoard.NextTurn == Color.White ? Color.Black : Color.White;
+            From         = chessBoard.From;
+            To           = chessBoard.To;
             Hash         = chessBoard.Hash;
         }
 
@@ -95,7 +99,7 @@ namespace bChess
 
         public override string ToString()
         {
-            return $"{Hash} - {FEN.Write(this)}";
+            return $"{Move} - {Hash} - {FEN.Write(this)}";
         }
 
         public override bool Equals(object obj)
@@ -279,9 +283,21 @@ namespace bChess
 
         private string GetMove(byte position)
         {
+            if (position == 0xFF)
+                return "00";
+
             char first = (char)(97 + ((position & 0xF)));
 		    char second = (char)(49 + ((position & 0xF0) >> 4));
             return $"{first}{second}";
+        }
+
+        public ChessBoard InsertNullMove()
+        {
+            var board = new ChessBoard(this);
+            board.CaptureInfo = new CaptureInfo(false, Piece.None, Piece.None);
+            board.From = 0xFF;
+            board.To = 0xFF;
+            return board;
         }
     }
 }

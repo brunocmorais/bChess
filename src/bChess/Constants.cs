@@ -44,6 +44,7 @@ namespace bChess
         public const int Rook = 500;
         public const int Queen = 900;
         public const int King = 20000;
+        public const int AllPiecesSum = Pawn + Knight + Bishop + Rook + Queen + King;
 
         public static readonly int[] WhitePawnPositions = new int[]
         {

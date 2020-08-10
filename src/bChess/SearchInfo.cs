@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace bChess
 {
@@ -8,10 +9,12 @@ namespace bChess
         public DateTime StartDate { get; private set; }
         public int VisitedNodes { get; set; }
         public int TableHits { get; set; }
-        public List<ChessBoard> BestMoves { get; set; }
-        public int Score { get; set; }
+        public IEnumerable<ChessBoard> BestMoves => PossibleMoves.Where(x => x.Value == MaxScore).Select(x => x.Key);
+        public int MaxScore => PossibleMoves.Max(x => x.Value);
         public int NPS => (int) (VisitedNodes / ((DateTime.Now - StartDate).TotalMilliseconds / 1000.0));
         public int Time => (DateTime.Now - StartDate).Milliseconds;
+        public Dictionary<ChessBoard, int> PossibleMoves { get; private set; }
+        public int Depth { get; set; }
 
         public SearchInfo() 
         { 
@@ -23,12 +26,11 @@ namespace bChess
             StartDate = searchInfo.StartDate;
             VisitedNodes = searchInfo.VisitedNodes;
             TableHits = searchInfo.TableHits;
-            BestMoves = new List<ChessBoard>();
+            Depth = searchInfo.Depth;
+            PossibleMoves = new Dictionary<ChessBoard, int>();
 
-            foreach (var move in searchInfo.BestMoves)
-                BestMoves.Add(move);
-
-            Score = searchInfo.Score;
+            foreach (var entry in searchInfo.PossibleMoves)
+                PossibleMoves.Add(entry.Key, entry.Value);
         }
 
         public void Reset()
@@ -36,8 +38,8 @@ namespace bChess
             StartDate = DateTime.Now;
             VisitedNodes = 0;
             TableHits = 0;
-            BestMoves = new List<ChessBoard>();
-            Score = int.MinValue + 1;
+            Depth = 0;
+            PossibleMoves = new Dictionary<ChessBoard, int>();
         }
     }
 }

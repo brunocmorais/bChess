@@ -6,7 +6,7 @@ namespace bChess
 {
     public static class MoveGenerator
     {
-        public static IEnumerable<ChessBoard> GetAllMovesForPosition(ChessBoard board)
+        public static IEnumerable<ChessBoard> GetPseudoMovesForPosition(ChessBoard board)
         {
             var pieces = board.GetPlayerPieces(board.NextTurn);
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 
 namespace bChess
 {
@@ -57,12 +58,31 @@ namespace bChess
                     blackPositions += Constants.BlackKingPositions[i];
             }
 
-            int eval = (whites - blacks) + (whitePositions - blackPositions);
+            return (whites - blacks) + (whitePositions - blackPositions);
+        }
 
-            // if (board.NextTurn == Color.Black)
-            //     eval = -eval;
+        public static bool IsInCheck(ChessBoard board)
+        {
+            var board1 = board.InsertNullMove();
+            var moves = MoveGenerator.GetPseudoMovesForPosition(board1);
+            var kingBitboard = board.GetBitboard(Piece.King, board.NextTurn);
 
-            return eval;
+            ulong mask = 0x1ul;
+            byte kingPosition = 0;
+
+            for (byte i = 0; i < Constants.BoardSize; i++)
+            {
+                if (i != 0)
+                    mask <<= 1;
+
+                if ((kingBitboard & mask) == mask)
+                {
+                    kingPosition = Constants.Positions[i];
+                    break;
+                }
+            }
+
+            return moves.Any(x => x.To == kingPosition);
         }
     }
 }

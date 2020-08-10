@@ -10,7 +10,7 @@ namespace bChess
             if (ply == 0)
                 return 1;
 
-            var moves = MoveGenerator.GetAllMovesForPosition(board);
+            var moves = MoveGenerator.GetPseudoMovesForPosition(board);
             int sum = 0;
 
             foreach (var move in moves)

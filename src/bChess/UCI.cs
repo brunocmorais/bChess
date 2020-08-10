@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,8 @@ namespace bChess
         private static ChessBoard board = new ChessBoard();
         private static CancellationTokenSource tokenSource = new CancellationTokenSource();
         private static System.Timers.Timer infoTimer = new System.Timers.Timer(1000);
-        private static int Level = 3;
+        private static int level = 3;
+        private static List<ChessBoard> moveHistory = new List<ChessBoard>(); 
 
         public static void Init()
         {
@@ -22,6 +24,7 @@ namespace bChess
         private static void InitBoard()
         {
             board = new ChessBoard();
+            moveHistory.Clear();
         }
 
         private static byte[] GetPositions(string move)
@@ -74,7 +77,7 @@ namespace bChess
             switch (parameters[2])
             {
                 case "Level":
-                    Level = int.Parse(parameters[4]);
+                    level = int.Parse(parameters[4]);
                     break;
                 case "ClearHashTable":
                     TranspositionTable.Clear();
@@ -90,7 +93,7 @@ namespace bChess
             {
                 try
                 {
-                    board = Search.Start(board, Level, tokenSource.Token);
+                    board = Search.Start(board, level, moveHistory, tokenSource.Token);
                     WriteResponse($"bestmove {board.Move}");
                 }
                 catch (Exception ex)
@@ -134,20 +137,22 @@ namespace bChess
                     fen = command.Substring(fenIndex + 3);
 
                 board = FEN.Read(fen.Trim());
+                moveHistory.Clear();
             }
 
             if (movesIndex > 0)
             {
                 string moves = command.Substring(movesIndex).Replace("moves", string.Empty).Trim();
-
                 string[] moveArray = moves.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                moveHistory.Add(board);
 
                 foreach (var move in moveArray)
                 {
                     byte[] position = GetPositions(move);
                     byte from = position[0];
                     byte to = position[1];
-                    board = board.MakeMove(board.GetPiece(from), /*board.NextTurn, */from, to);
+                    board = board.MakeMove(board.GetPiece(from), from, to);
+                    moveHistory.Add(board);
                 }
             }
         }
@@ -180,7 +185,7 @@ namespace bChess
             if (bestMove == null)
                 return;
 
-            WriteResponse($"info depth {Level} score cp {info.Score} nodes {info.VisitedNodes} nps {info.NPS} tbhits {info.TableHits} pv {bestMove.Move}");
+            WriteResponse($"info depth {info.Depth} score cp {info.MaxScore} nodes {info.VisitedNodes} nps {info.NPS} tbhits {info.TableHits} pv {bestMove.Move}");
         }
     }
 }

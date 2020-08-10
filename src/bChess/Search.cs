@@ -11,52 +11,63 @@ namespace bChess
     {
         private static readonly SearchInfo searchInfo = new SearchInfo();
         private static CancellationToken cancellationToken;
+        private static List<ChessBoard> moveHistory;
 
-        public static ChessBoard Start(ChessBoard board, int depth, CancellationToken ct)
+        public static ChessBoard Start(ChessBoard board, int maxDepth, List<ChessBoard> moveHistory, CancellationToken ct)
         {
+            Search.moveHistory = moveHistory;
             searchInfo.Reset();
-
             cancellationToken = ct;
-            var moves = OrderMoves(MoveGenerator.GetAllMovesForPosition(board)).ToList();
-            
-            searchInfo.BestMoves.Add(moves.First());
 
-            // entender porque 4k3/8/5R2/8/8/2R5/8/4K1b1 b - - 1 1 traz movimentos estranhos
-
-            if (moves.Count >= 2) // efetua busca com duas threads para ganhar velocidade
+            for (int depth = 1; depth <= maxDepth; depth++)
             {
-                var intervals = new[] { 0, moves.Count / 2, moves.Count };
-                var tasks = new Task[2];
+                searchInfo.Depth = depth;
+                List<ChessBoard> moves;
 
-                tasks[0] = Task.Run(() => ProcessInnerTree(moves.GetRange(intervals[0], intervals[1] - intervals[0]), depth), ct);
-                tasks[1] = Task.Run(() => ProcessInnerTree(moves.GetRange(intervals[1], intervals[2] - intervals[1]), depth), ct);
-                
-                Task.WaitAll(tasks);
+                if (searchInfo.PossibleMoves.Any())
+                    moves = searchInfo.PossibleMoves.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
+                else
+                {
+                    moves = MoveGenerator.GetPseudoMovesForPosition(board).ToList();
+
+                    foreach (var move in moves)
+                        searchInfo.PossibleMoves.Add(move, 0);
+                }
+
+                if (moves.Count >= 2) // efetua busca com duas threads para ganhar velocidade
+                {
+                    var intervals = new[] { 0, moves.Count / 2, moves.Count };
+                    var tasks = new Task[2];
+
+                    tasks[0] = Task.Run(() => ProcessInnerTree(moves.GetRange(intervals[0], intervals[1] - intervals[0]), depth), ct);
+                    tasks[1] = Task.Run(() => ProcessInnerTree(moves.GetRange(intervals[1], intervals[2] - intervals[1]), depth), ct);
+                    
+                    Task.WaitAll(tasks);
+                }
+                else
+                    ProcessInnerTree(moves, depth);
+
             }
-            else
-                ProcessInnerTree(moves, depth);
-
-            return searchInfo.BestMoves[new Random().Next(0, searchInfo.BestMoves.Count)];
+            
+            return searchInfo.BestMoves.ToList()[new Random().Next(0, searchInfo.BestMoves.Count())];
         }
 
         private static void ProcessInnerTree(IEnumerable<ChessBoard> moves, int depth)
         {
             foreach (var move in moves)
             {
+                if (moveHistory.Count(x => x.Hash == move.Hash) == 2)
+                {
+                    searchInfo.PossibleMoves[move] = 0;
+                    continue;
+                }
+
                 int? boardValue = -AlphaBeta(move, int.MinValue, int.MaxValue, depth, move.NextTurn == Color.White ? 1 : -1);
 
-                if (boardValue != null) // movimento inválido
-                {
-                    if (boardValue > searchInfo.Score) // novo melhor movimento, limpa os anteriores
-                    {
-                        searchInfo.Score = boardValue.Value;
-                        searchInfo.BestMoves.Clear();
-                        searchInfo.BestMoves.Add(move);
-                        searchInfo.Score = boardValue.Value;
-                    }
-                    else if (boardValue == searchInfo.Score) // movimento tão bom quanto o já encontrado, adicionar para ter mais opções 
-                        searchInfo.BestMoves.Add(move);
-                }
+                if (!boardValue.HasValue) // movimento inválido
+                    searchInfo.PossibleMoves[move] = int.MinValue;
+                else
+                    searchInfo.PossibleMoves[move] = boardValue.Value;
             }
         }
 
@@ -86,9 +97,13 @@ namespace bChess
             }
 
             if (depth == 0)
-                return Evaluator.Evaluate(board) * color;
+            {
+                int evaluate = Evaluator.Evaluate(board) * color;
+                //TranspositionTable.Add(board, depth, evaluate, Transposition.Exact);
+                return evaluate;
+            }
 
-            var moves = MoveGenerator.GetAllMovesForPosition(board);
+            var moves = MoveGenerator.GetPseudoMovesForPosition(board);
 
             if (moves.Any(x => x == null)) // movimento inválido
                 return null;
@@ -119,9 +134,58 @@ namespace bChess
             else
                 type = Transposition.Exact;
 
+            if (value < -Constants.AllPiecesSum && !Evaluator.IsInCheck(board)) // rei afogado
+                value = 0;
+
             TranspositionTable.Add(board, depth, value, type);
 
             return value;
+        }
+
+        public static int? Quiesce(ChessBoard board, int alpha, int beta, int color)
+        {
+            searchInfo.VisitedNodes++;
+
+            TranspositionTableInfo ttInfo = TranspositionTable.Find(board);
+            
+            if (ttInfo.Hash == board.Hash && ttInfo.Type == Transposition.Exact)
+            {
+                searchInfo.TableHits++;
+                return ttInfo.Value;
+            }
+
+            var evaluate = Evaluator.Evaluate(board) * color;
+
+            TranspositionTable.Add(board, 0, evaluate, Transposition.Exact);
+
+            if (evaluate >= beta)
+                return beta;
+            
+            if (alpha < evaluate)
+                alpha = evaluate;
+
+            var moves = MoveGenerator.GetPseudoMovesForPosition(board);
+
+            if (moves.Any(x => x == null))
+                return null;
+
+            foreach (var move in moves)
+            {
+                if (move.CaptureInfo.IsCapture)
+                {
+                    int? score = -Quiesce(move, -beta, -alpha, -color);
+
+                    if (score == null) // movimento inválido
+                        continue;
+
+                    if (score >= beta)
+                        return beta;
+                    if (score > alpha)
+                        alpha = score.Value;
+                }
+            }
+
+            return alpha;
         }
 
         private static IEnumerable<ChessBoard> OrderMoves(IEnumerable<ChessBoard> moves)
